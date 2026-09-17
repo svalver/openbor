@@ -907,6 +907,35 @@ void control_update(s_playercontrols ** playercontrols, int numplayers)
 					}
 				}
 			}
+
+			/*
+			* Saving Private Pla: let the LEFT STICK move as well as the d-pad.
+			*
+			* savedata holds exactly one binding per action, so the d-pad and
+			* the stick cannot both be configured - yet a player expects either
+			* to work. This is a second, compiled-in mapping for the four
+			* movement directions only, OR'd on top of the configured one.
+			*
+			* Indices are the measured Xbox layout (11 buttons, 6 axes, 1 hat):
+			* the left stick occupies 12 X-, 13 X+, 14 Y-, 15 Y+, and the array
+			* is 0-based, hence the -1. A pad with different button/axis counts
+			* would need different numbers - see docs/controllers.md.
+			*/
+			if(player >= 0 && player < JOY_LIST_TOTAL)
+			{
+				static const struct { u64 flag; int index; } stick[] = {
+					{ FLAG_MOVEUP,    14 },
+					{ FLAG_MOVEDOWN,  15 },
+					{ FLAG_MOVELEFT,  12 },
+					{ FLAG_MOVERIGHT, 13 },
+				};
+				unsigned s;
+				for(s = 0; s < sizeof(stick)/sizeof(stick[0]); s++)
+				{
+					if((joysticks[player].Data >> (stick[s].index - 1)) & 1)
+						k |= ((u64)1 << flag_to_index(stick[s].flag));
+				}
+			}
 		}
 		pcontrols->kb_break = 0;
 		pcontrols->newkeyflags = k & (~pcontrols->keyflags);
