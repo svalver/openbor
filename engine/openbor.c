@@ -34689,19 +34689,59 @@ void toss(entity *ent, float lift)
 * with no way to walk back in. The failure looks identical from the outside
 * every time - the level simply stops - and says nothing.
 *
-* So after ten seconds of waiting this prints what is blocking it, every five
-* seconds, and keeps printing while the wait lasts. Ten seconds is long enough
-* that a wave the player is genuinely still fighting never triggers it.
+* Elapsed time is the wrong trigger, though: a player can legitimately spend a
+* minute on a wave, and a diagnostic that fires during normal play is noise
+* that teaches you to ignore it. So the clock here measures how long the set of
+* counted enemies has been COMPLETELY UNCHANGED - same entities, same health,
+* same positions. Fifteen seconds of that is not a fight, it is a deadlock.
+*
+* It prints every counted entity, not just the first, because more than one can
+* be stuck and because the list itself is informative: an enemy's projectile is
+* in flight with TYPE_ENEMY (see knife_spawn) and shows up here, which is worth
+* knowing the first time you see it.
 */
 static uint64_t spp_wait_since = 0;
 static uint64_t spp_wait_next_report = 0;
+static unsigned long spp_wait_signature = 0;
+
+static unsigned long spp_wave_signature(void)
+{
+    unsigned long sig = 1469598103u;
+
+    for(int i = 0; i < ent_max; i++)
+    {
+        entity *e = ent_list[i];
+
+        if(!e->exists || !(e->modeldata.type & TYPE_ENEMY))
+        {
+            continue;
+        }
+
+        if((e->death_state & (DEATH_STATE_DEAD | DEATH_STATE_CORPSE))
+                == (DEATH_STATE_DEAD | DEATH_STATE_CORPSE))
+        {
+            continue;
+        }
+
+        sig = sig * 31u + (unsigned long)(i + 1);
+        sig = sig * 31u + (unsigned long)(e->energy_state.health_current + 1000);
+        sig = sig * 31u + (unsigned long)((int)e->position.x + 100000);
+        sig = sig * 31u + (unsigned long)((int)e->position.z + 100000);
+        sig = sig * 31u + (unsigned long)e->animnum;
+    }
+
+    return sig;
+}
 
 static void spp_report_stuck_wave(entity *blocker)
 {
-    if(!spp_wait_since)
+    unsigned long sig = spp_wave_signature();
+
+    if(!spp_wait_since || sig != spp_wait_signature)
     {
+        spp_wait_signature = sig;
         spp_wait_since = _time;
-        spp_wait_next_report = _time + 10 * global_config.game_speed;
+        spp_wait_next_report = _time + 15 * global_config.game_speed;
         return;
     }
 
@@ -34710,23 +34750,40 @@ static void spp_report_stuck_wave(entity *blocker)
         return;
     }
 
-    spp_wait_next_report = _time + 5 * global_config.game_speed;
+    spp_wait_next_report = _time + 10 * global_config.game_speed;
 
-    fprintf(stderr,
-            "Wave stuck %llus on: %s health=%d death_state=%d animating=%d "
-            "anim=%d frame=%d x=%.1f z=%.1f y=%.1f advancex=%d view=%d "
-            "offscreenkill=%d think=%p takeaction=%p\n",
+    (void)blocker;
+
+    fprintf(stderr, "Wave unchanged for %llus, advancex=%d view=%d:\n",
             (unsigned long long)((_time - spp_wait_since) / global_config.game_speed),
-            blocker->name,
-            blocker->energy_state.health_current,
-            (int)blocker->death_state,
-            (int)blocker->animating,
-            (int)blocker->animnum,
-            (int)blocker->animpos,
-            blocker->position.x, blocker->position.z, blocker->position.y,
-            (int)advancex, videomodes.hRes,
-            blocker->modeldata.offscreenkill,
-            (void *)blocker->think, (void *)blocker->takeaction);
+            (int)advancex, videomodes.hRes);
+
+    for(int i = 0; i < ent_max; i++)
+    {
+        entity *e = ent_list[i];
+
+        if(!e->exists || !(e->modeldata.type & TYPE_ENEMY))
+        {
+            continue;
+        }
+
+        if((e->death_state & (DEATH_STATE_DEAD | DEATH_STATE_CORPSE))
+                == (DEATH_STATE_DEAD | DEATH_STATE_CORPSE))
+        {
+            continue;
+        }
+
+        fprintf(stderr,
+                "    %-12s health=%-4d x=%-8.1f z=%-6.1f dir=%s vel=%+.2f "
+                "anim=%d animating=%d death_state=%d osk=%d\n",
+                e->name,
+                e->energy_state.health_current,
+                e->position.x, e->position.z,
+                (e->direction == DIRECTION_RIGHT) ? "R" : "L",
+                e->velocity.x,
+                (int)e->animnum, (int)e->animating, (int)e->death_state,
+                e->modeldata.offscreenkill);
+    }
     fflush(stderr);
 }
 
