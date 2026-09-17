@@ -53575,6 +53575,18 @@ int selectplayer(int *players, char *filename, int useSavedGame)
 				}
 			}
 
+			/*
+			* Saving Private Pla: stop the music, exactly as the path below
+			* does on its way out of the select screen.
+			*
+			* This branch - skipselect, so no character screen is shown -
+			* returns early and skipped it, so whatever was playing at the
+			* title carried straight on into the level, while a player who
+			* picked a character got silence. Two routes into the same state
+			* that sounded different.
+			*/
+			sound_close_music();
+
 			screen_status &= ~IN_SCREEN_SELECT;
 
 			return 1;
