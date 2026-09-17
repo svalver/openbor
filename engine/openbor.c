@@ -27456,6 +27456,28 @@ void ent_default_init(entity *e)
         return;
     }
 
+    /*
+    * Saving Private Pla: `remove HitAlways` - die when my own attack connects.
+    *
+    * The engine already does this, generically, a few thousand lines away:
+    *
+    *     if(attacking_entity->autokill & AUTOKILL_ATTACK_HIT) kill_entity(...)
+    *
+    * but the flag is only ever set in three places - child spawn, projectile
+    * spawn, star spawn - so nothing placed by a level file can ask for it. A
+    * landmine is the obvious thing that wants it: contact damage is easy (a
+    * trap's attack box is permanently live), being consumed by the contact is
+    * not expressible at all.
+    *
+    * Deliberately NOT keyed on REMOVE_CONFIG_HIT, which is the default for
+    * every model and would make every entity in every module vanish the first
+    * time it hit anything.
+    */
+    if(e->modeldata.remove_config & REMOVE_CONFIG_HIT_ALWAYS)
+    {
+        e->autokill |= AUTOKILL_ATTACK_HIT;
+    }
+
     if((!(screen_status & IN_SCREEN_SELECT) && !_time) || e->modeldata.type != TYPE_PLAYER )
     {
         if( validanim(e, ANI_SPAWN))
@@ -37872,6 +37894,7 @@ e_shadow_config_flags shadow_get_config_from_legacy_shadowbase(e_shadow_config_f
 static const s_remove_config_map remove_config_map[] = {
     { "None", REMOVE_CONFIG_NONE },
     { "Hit", REMOVE_CONFIG_HIT },
+    { "HitAlways", REMOVE_CONFIG_HIT_ALWAYS },
 };
 
 #define REMOVE_CONFIG_MAP_SIZE (sizeof(remove_config_map) / sizeof(remove_config_map[0]))

@@ -301,7 +301,23 @@ typedef enum
 */
 typedef enum {
 	REMOVE_CONFIG_NONE,
-	REMOVE_CONFIG_HIT = (1 << 0)	// Remove when contact is made.
+	REMOVE_CONFIG_HIT = (1 << 0),	// Remove when contact is made.
+
+	/*
+	* Saving Private Pla: as REMOVE_CONFIG_HIT, but honoured for any entity
+	* rather than only for one spawned as a projectile.
+	*
+	* REMOVE_CONFIG_HIT is the DEFAULT for every model, and is only ever acted
+	* on inside the projectile and star spawn paths - so a level-placed entity
+	* can never be removed when its own attack connects, even though the engine
+	* has the behaviour (AUTOKILL_ATTACK_HIT) and applies it generically. This
+	* is the opt-in that a level-placed entity has no other way to ask for. It
+	* has to be a separate bit precisely because HIT is the default and cannot
+	* mean "yes, really" without changing every model in every module.
+	*
+	* Written in a model file as: remove HitAlways
+	*/
+	REMOVE_CONFIG_HIT_ALWAYS = (1 << 1)
 } e_remove_config;
 
 typedef struct {
