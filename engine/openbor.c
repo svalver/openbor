@@ -62,6 +62,7 @@ int		skiptoset = -1;
 * keyboard. Nothing reaches this unless the flag is on the command line.
 */
 int		autostart = 0;
+int		autostart_select = 0;
 //when there are more entities than this, those with lower priority will be erased
 int spawnoverride = 999999;
 int maxentities = 999999;
@@ -53309,6 +53310,7 @@ int selectplayer(int *players, char *filename, int useSavedGame)
 	int saved_select_screen = 0;
 	int is_first_select = 1;
 
+
 	savelevelinfo();
 
     screen_status |= IN_SCREEN_SELECT;
@@ -53333,6 +53335,37 @@ int selectplayer(int *players, char *filename, int useSavedGame)
 			&& allowselect_args[0] != 'A'))
 	{
 		reset_playable_list(1);
+	}
+
+	/*
+	* Saving Private Pla: -autostart picks the first character for you.
+	*
+	* Position matters twice over, and both were wrong before this.
+	*
+	* It cannot go at the title screen: models are only selectable once the set
+	* is loaded, and nextplayermodel() does not return NULL when it finds none -
+	* it calls borShutdown("can't find any player models") and takes the process
+	* with it.
+	*
+	* And it cannot go at the top of this function either, because
+	* reset_playable_list(1) directly above is what marks the player models
+	* selectable in the first place. One line earlier and it is the same fatal.
+	*
+	* Filling skipselect reuses the engine's own skip rather than inventing a
+	* second one: the branch further down already bypasses the select screen
+	* when it holds a name. openborMain restores the old value afterwards, so
+	* normal play still gets its character select.
+	*/
+	if(autostart_select)
+	{
+		s_model *first_player = nextplayermodel(NULL);
+
+		if(first_player)
+		{
+			strncpy(skipselect[0], first_player->name, MAX_NAME_LEN - 1);
+			skipselect[0][MAX_NAME_LEN - 1] = 0;
+		}
+		autostart_select = 0;
 	}
 
 	// Reset memory for player array.
@@ -56644,6 +56677,56 @@ void openborMain(int argc, char **argv)
         if(!started)
         {
             /*
+            * Saving Private Pla: -autostart plays the whole title-to-stage
+            * sequence for you - one player, first character, first set.
+            *
+            * It reuses the engine's own skip rather than inventing one:
+            * selectplayer() already bypasses the character screen when
+            * skipselect[0] holds a name, which is what the `skipselect` level
+            * order command sets. Filling it in here from nextplayermodel(NULL)
+            * - the first selectable character, whatever the module calls it -
+            * gets the same effect without the module having to declare it, so
+            * normal play still gets its character select.
+            *
+            * The old value is restored afterwards, and the flag is cleared
+            * before playing: returning to the title must not start again.
+            */
+            if(autostart)
+            {
+                char saved_skipselect[MAX_NAME_LEN];
+
+                memcpy(saved_skipselect, skipselect[0], MAX_NAME_LEN);
+                autostart_select = 1;
+                for(i = 0; i < MAX_PLAYERS; i++)
+                {
+                    players[i] = (i == 0);
+                }
+
+                autostart = 0;
+                /*
+                * menu_difficulty() rather than playgame() directly: it is what
+                * the menu path calls, and it loads the game file. Calling
+                * playgame() straight off skips that and the engine dies with
+                * "can't find any player models" - the set and its models are
+                * not registered yet. A module with a single set auto-loads, so
+                * nothing is shown.
+                */
+                {
+                    int chosen_set;
+                    chosen_set = menu_difficulty();
+                    if(chosen_set != -1)
+                    {
+                        playgame(players, chosen_set, 0);
+                    }
+                }
+                autostart_select = 0;
+                memcpy(skipselect[0], saved_skipselect, MAX_NAME_LEN);
+
+                relback = 1;
+                started = 0;
+            }
+
+            /*
             * Saving Private Pla: the game's credit, steady rather than
             * blinking, in the bottom left of the title screen. Drawn by the
             * engine rather than painted into the artwork so it stays sharp,
@@ -56666,45 +56749,7 @@ void openborMain(int argc, char **argv)
                 */
                 _menutextmshift(0, 0, 0, 0, 200, Tr("PRESS START"));
             }
-            /*
-            * Saving Private Pla: -autostart plays the whole title-to-stage
-            * sequence for you - one player, first character, first set.
-            *
-            * It reuses the engine's own skip rather than inventing one:
-            * selectplayer() already bypasses the character screen when
-            * skipselect[0] holds a name, which is what the `skipselect` level
-            * order command sets. Filling it in here from nextplayermodel(NULL)
-            * - the first selectable character, whatever the module calls it -
-            * gets the same effect without the module having to declare it, so
-            * normal play still gets its character select.
-            *
-            * The old value is restored afterwards, and the flag is cleared
-            * before playing: returning to the title must not start again.
-            */
-            if(autostart)
-            {
-                s_model *first_player = nextplayermodel(NULL);
-                char saved_skipselect[MAX_NAME_LEN];
-
-                memcpy(saved_skipselect, skipselect[0], MAX_NAME_LEN);
-                if(first_player)
-                {
-                    strncpy(skipselect[0], first_player->name, MAX_NAME_LEN - 1);
-                    skipselect[0][MAX_NAME_LEN - 1] = 0;
-                }
-                for(i = 0; i < MAX_PLAYERS; i++)
-                {
-                    players[i] = (i == 0);
-                }
-
-                autostart = 0;
-                playgame(players, 0, 0);
-                memcpy(skipselect[0], saved_skipselect, MAX_NAME_LEN);
-
-                relback = 1;
-                started = 0;
-            }
-            else if(bothnewkeys & (FLAG_ANYBUTTON))
+            if(bothnewkeys & (FLAG_ANYBUTTON))
             {
                 started = 1;
                 relback = 1;
