@@ -34679,6 +34679,57 @@ void toss(entity *ent, float lift)
     ent->position.y += 0.5;        // Get some altitude (needed for checks)
 }
 
+/*
+* Saving Private Pla: naming the enemy a wave is waiting on.
+*
+* A level `wait` clears when findent(TYPE_ENEMY) returns NULL, and the three
+* times this prototype has hung on a wave it was because some entity was still
+* counted by that call while being, to a player, obviously not there: parked
+* off the edge of the view, sitting as a wreck, or spawned outside the camera
+* with no way to walk back in. The failure looks identical from the outside
+* every time - the level simply stops - and says nothing.
+*
+* So after ten seconds of waiting this prints what is blocking it, every five
+* seconds, and keeps printing while the wait lasts. Ten seconds is long enough
+* that a wave the player is genuinely still fighting never triggers it.
+*/
+static uint64_t spp_wait_since = 0;
+static uint64_t spp_wait_next_report = 0;
+
+static void spp_report_stuck_wave(entity *blocker)
+{
+    if(!spp_wait_since)
+    {
+        spp_wait_since = _time;
+        spp_wait_next_report = _time + 10 * global_config.game_speed;
+        return;
+    }
+
+    if(_time < spp_wait_next_report)
+    {
+        return;
+    }
+
+    spp_wait_next_report = _time + 5 * global_config.game_speed;
+
+    fprintf(stderr,
+            "Wave stuck %llus on: %s health=%d death_state=%d animating=%d "
+            "anim=%d frame=%d x=%.1f z=%.1f y=%.1f advancex=%d view=%d "
+            "offscreenkill=%d think=%p takeaction=%p\n",
+            (unsigned long long)((_time - spp_wait_since) / global_config.game_speed),
+            blocker->name,
+            blocker->energy_state.health_current,
+            (int)blocker->death_state,
+            (int)blocker->animating,
+            (int)blocker->animnum,
+            (int)blocker->animpos,
+            blocker->position.x, blocker->position.z, blocker->position.y,
+            (int)advancex, videomodes.hRes,
+            blocker->modeldata.offscreenkill,
+            (void *)blocker->think, (void *)blocker->takeaction);
+    fflush(stderr);
+}
+
 entity *findent(int types)
 {
     int i;
@@ -50312,15 +50363,26 @@ void update_scroller()
     if(level->waiting)
     {
         // Wait for all enemies to be defeated
-        if(!findent(TYPE_ENEMY))
+        entity *blocker = findent(TYPE_ENEMY);
+
+        if(!blocker)
         {
             level->waiting = 0;
+            spp_wait_since = 0;
             if(level->noreset <= 1)
             {
                 timeleft = level->settime * global_config.counter_speed;    // Feb 24, 2005 - This line moved here to set custom time
             }
             go_time = _time + 3 * global_config.game_speed;
         }
+        else
+        {
+            spp_report_stuck_wave(blocker);
+        }
+    }
+    else
+    {
+        spp_wait_since = 0;
     }
 
     if(numplay == 0)
