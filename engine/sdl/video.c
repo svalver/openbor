@@ -51,7 +51,13 @@ void initSDL()
 		printf("SDL Failed to Init!!!! (%s)\n", SDL_GetError());
 		borExit(0);
 	}
-	SDL_ShowCursor(SDL_DISABLE);
+	/*
+	* Saving Private Pla: stock OpenBOR hides the mouse pointer unconditionally.
+	* That makes sense for a fullscreen cabinet, but in a window it means the
+	* pointer vanishes whenever it crosses the game and you cannot find it
+	* again. Hide it only in fullscreen. (Project preference, not a bug fix.)
+	*/
+	SDL_ShowCursor(savedata.fullscreen ? SDL_DISABLE : SDL_ENABLE);
 
 #ifdef LOADGL
 	if(SDL_GL_LoadLibrary(NULL) < 0)
@@ -194,7 +200,13 @@ int video_set_mode(s_videomodes videomodes)
 	                            SDL_TEXTUREACCESS_STREAMING,
 	                            videomodes.hRes, videomodes.vRes);
 
-	SDL_ShowCursor(SDL_DISABLE);
+	/*
+	* Saving Private Pla: stock OpenBOR hides the mouse pointer unconditionally.
+	* That makes sense for a fullscreen cabinet, but in a window it means the
+	* pointer vanishes whenever it crosses the game and you cannot find it
+	* again. Hide it only in fullscreen. (Project preference, not a bug fix.)
+	*/
+	SDL_ShowCursor(savedata.fullscreen ? SDL_DISABLE : SDL_ENABLE);
 	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 	video_stretch(savedata.stretch);
 
@@ -341,6 +353,23 @@ void vga_vwait(void)
 	}
 	else SDL_Delay(1);
 	prevtick = now;
+
+	/*
+	* Saving Private Pla: service the platform event queue.
+	*
+	* Several engine loops - fade_out() and fade_in() above all - spin on
+	* vga_vwait() for dozens of frames without ever calling the input update,
+	* so nothing polls SDL events for a second or more at a time. macOS treats
+	* an application that stops servicing its event queue as hung and puts up
+	* the spinning beachball, which is exactly what happened on the transition
+	* out of a finished stage (two fades back to back).
+	*
+	* SDL_PumpEvents() is the right call here rather than SDL_PollEvent():
+	* it moves events from the OS into SDL's queue and tells the window server
+	* the process is alive, but it does NOT dequeue anything, so input still
+	* arrives intact at whatever reads it next.
+	*/
+	SDL_PumpEvents();
 }
 
 #endif
