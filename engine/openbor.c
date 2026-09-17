@@ -56,6 +56,12 @@ int        num_difficulties;
 int no_cmd_compatible = 0;
 
 int		skiptoset = -1;
+/*
+* Saving Private Pla: -autostart. Boot straight into the game as one player
+* with the first character, so the thing can be tested without a human at the
+* keyboard. Nothing reaches this unless the flag is on the command line.
+*/
+int		autostart = 0;
 //when there are more entities than this, those with lower priority will be erased
 int spawnoverride = 999999;
 int maxentities = 999999;
@@ -56534,6 +56540,19 @@ void openborMain(int argc, char **argv)
         }
     }
 
+    /*
+    * Saving Private Pla: scan EVERY argument, not just argv[1]. The stock
+    * block above only ever looks at the first one, and on this port argv[1] is
+    * already taken by the launch stub the app passes in.
+    */
+    for(i = 1; i < argc; i++)
+    {
+        if(!strcmp(argv[i], "-autostart"))
+        {
+            autostart = 1;
+        }
+    }
+
 
     modelcmdlist = createModelCommandList();
     modelstxtcmdlist = createModelstxtCommandList();
@@ -56647,7 +56666,45 @@ void openborMain(int argc, char **argv)
                 */
                 _menutextmshift(0, 0, 0, 0, 200, Tr("PRESS START"));
             }
-            if(bothnewkeys & (FLAG_ANYBUTTON))
+            /*
+            * Saving Private Pla: -autostart plays the whole title-to-stage
+            * sequence for you - one player, first character, first set.
+            *
+            * It reuses the engine's own skip rather than inventing one:
+            * selectplayer() already bypasses the character screen when
+            * skipselect[0] holds a name, which is what the `skipselect` level
+            * order command sets. Filling it in here from nextplayermodel(NULL)
+            * - the first selectable character, whatever the module calls it -
+            * gets the same effect without the module having to declare it, so
+            * normal play still gets its character select.
+            *
+            * The old value is restored afterwards, and the flag is cleared
+            * before playing: returning to the title must not start again.
+            */
+            if(autostart)
+            {
+                s_model *first_player = nextplayermodel(NULL);
+                char saved_skipselect[MAX_NAME_LEN];
+
+                memcpy(saved_skipselect, skipselect[0], MAX_NAME_LEN);
+                if(first_player)
+                {
+                    strncpy(skipselect[0], first_player->name, MAX_NAME_LEN - 1);
+                    skipselect[0][MAX_NAME_LEN - 1] = 0;
+                }
+                for(i = 0; i < MAX_PLAYERS; i++)
+                {
+                    players[i] = (i == 0);
+                }
+
+                autostart = 0;
+                playgame(players, 0, 0);
+                memcpy(skipselect[0], saved_skipselect, MAX_NAME_LEN);
+
+                relback = 1;
+                started = 0;
+            }
+            else if(bothnewkeys & (FLAG_ANYBUTTON))
             {
                 started = 1;
                 relback = 1;

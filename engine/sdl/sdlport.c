@@ -128,10 +128,24 @@ int main(int argc, char *argv[])
 
    // Test command line argument to launch MOD
    int romArg = 0;
-   if(argc == 2) {
-      memcpy(packfile, argv[1], strlen(argv[1]));
-      if(fileExists(packfile)) {
-         romArg = 1;
+   /*
+   * Saving Private Pla: upstream tests `argc == 2`, which means the engine
+   * cannot accept ANY argument beside the module - passing one silently drops
+   * you into the module browser instead of the game, with nothing in the log
+   * to say why. Take the first argument that is an existing file and let flags
+   * sit beside it.
+   */
+   {
+      int a;
+      for(a = 1; a < argc && !romArg; a++) {
+         if(argv[a][0] == '-') {
+            continue;   /* a flag, not a module */
+         }
+         if(fileExists(argv[a])) {
+            memset(packfile, 0, sizeof(packfile));
+            memcpy(packfile, argv[a], strlen(argv[a]));
+            romArg = 1;
+         }
       }
    }
 
