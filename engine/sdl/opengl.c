@@ -211,6 +211,37 @@ int video_gl_set_mode(s_videomodes videomodes)
 	viewportWidth = savedata.fullscreen ? nativeWidth : (int)(videomodes.hRes * MAX(0.25,videomodes.hScale));
 	viewportHeight = savedata.fullscreen ? nativeHeight : (int)(videomodes.vRes * MAX(0.25,videomodes.vScale));
 
+	/*
+	* Saving Private Pla: never open a window bigger than the display.
+	*
+	* The window is internal resolution x hwscale, and hwscale is a fixed user
+	* setting that knows nothing about the resolution it is multiplying. A wide
+	* cabinet mode (2W x H for a two-screen cabinet) at the same scale asks for
+	* a window twice as wide as a normal one, which silently runs off the edge
+	* of a laptop display - and a window whose title bar is off-screen cannot be
+	* moved back. Shrink the scale to fit instead, preserving aspect ratio.
+	*/
+	if(!savedata.fullscreen && nativeWidth > 0 && nativeHeight > 0)
+	{
+		float fit = 1.0f;
+
+		if(viewportWidth > nativeWidth)
+		{
+			fit = (float)nativeWidth / (float)viewportWidth;
+		}
+		if(viewportHeight * fit > nativeHeight)
+		{
+			fit = (float)nativeHeight / (float)viewportHeight;
+		}
+		if(fit < 1.0f)
+		{
+			viewportWidth = (int)(viewportWidth * fit);
+			viewportHeight = (int)(viewportHeight * fit);
+			printf("Window scaled to %ix%i to fit the %ix%i display.\n",
+				viewportWidth, viewportHeight, nativeWidth, nativeHeight);
+		}
+	}
+
 	// zero width/height means close the window, not make it enormous!
 	if((viewportWidth == 0) || (viewportHeight == 0)) return 0;
 
