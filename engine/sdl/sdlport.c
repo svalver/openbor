@@ -149,6 +149,41 @@ int main(int argc, char *argv[])
       }
    }
 
+   /*
+   * Saving Private Pla: which displays to spread the picture over.
+   *
+   * Deliberately the same spelling as the MAME multi-screen launch scripts
+   * this was modelled on, so one set of display numbers and one habit works
+   * for both:
+   *
+   *     -numscreens 2 -screen0 2 -screen1 1
+   *
+   * The value is an SDL display index and may be written "2" or "screen2";
+   * tools/list_displays prints them, and they change when a monitor is
+   * plugged or unplugged.
+   */
+   {
+      int a;
+      for(a = 1; a < argc; a++) {
+         if(!strcmp(argv[a], "-numscreens") && a + 1 < argc) {
+            spp_screen_count = atoi(argv[++a]);
+            if(spp_screen_count < 1) spp_screen_count = 1;
+            if(spp_screen_count > SPP_MAX_SCREENS) spp_screen_count = SPP_MAX_SCREENS;
+         } else if(!strncmp(argv[a], "-screen", 7) && argv[a][7] >= '0' && argv[a][7] <= '9'
+                   && a + 1 < argc) {
+            int which = argv[a][7] - '0';
+            const char *val = argv[++a];
+            if(!strncmp(val, "screen", 6)) val += 6;
+            if(which >= 0 && which < SPP_MAX_SCREENS) spp_screen_display[which] = atoi(val);
+         }
+      }
+      if(spp_screen_count > 1) {
+         printf("Screens: %d", spp_screen_count);
+         for(a = 0; a < spp_screen_count; a++) printf("  screen%d -> display %d", a, spp_screen_display[a]);
+         printf("\n");
+      }
+   }
+
    if(!romArg) {
        Menu();
    }

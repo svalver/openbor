@@ -30,6 +30,15 @@ void video_clearscreen();
 void video_fullscreen_flip();
 void video_stretch(int);
 void video_set_window_title(const char*);
+
+/*
+* Saving Private Pla: one game image spread over several displays. Set from
+* the command line in sdlport.c, read by video.c. Display numbers are SDL
+* display indices - tools/list_displays prints them.
+*/
+#define SPP_MAX_SCREENS 4
+extern int spp_screen_count;
+extern int spp_screen_display[SPP_MAX_SCREENS];
 void video_set_color_correction(int, int);
 
 // for WebM video playback
