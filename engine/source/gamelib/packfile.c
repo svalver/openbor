@@ -720,9 +720,18 @@ char *casesearch(const char *dir, const char *filepath) {
     }
 
     if(entry != NULL)  {
-        strcpy(fullpath, dir);
-        strcat(fullpath, "/");
-        strcat(fullpath, entry->d_name);
+        char resolved[PACKFILE_PATH_MAX];
+
+        /*
+        * When casesearch() recurses into a subdirectory it passes the static
+        * `fullpath` buffer back in as `dir`, so `dir` and `fullpath` alias.
+        * strcpy() with overlapping source and destination is undefined
+        * behaviour; macOS's fortified libc detects it and aborts the process
+        * with SIGTRAP, which made unpacked "raw data" modules impossible to
+        * run there. Compose the result in a local buffer first.
+        */
+        snprintf(resolved, sizeof(resolved), "%s/%s", dir, entry->d_name);
+        strcpy(fullpath, resolved);
     }
 
     if(closedir(directory))  {
