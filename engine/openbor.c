@@ -56624,9 +56624,28 @@ void openborMain(int argc, char **argv)
         if (goto_mainmenu_flag != 0) goto_mainmenu_flag = 0;
         if(!started)
         {
+            /*
+            * Saving Private Pla: the game's credit, steady rather than
+            * blinking, in the bottom left of the title screen. Drawn by the
+            * engine rather than painted into the artwork so it stays sharp,
+            * uses the game font, and is one line to edit when the year or the
+            * names change. tools/fit_title.py shades the sand underneath it.
+            */
+            font_printf(8, videomodes.vRes - 20, 0, 0,
+                        "(C) VALVERDE AND SARDANYES (2026)");
+
             if((_time % global_config.game_speed) < (global_config.game_speed / 2))
             {
-                _menutextm(0, 0, 0, Tr("PRESS START"));
+                /*
+                * Saving Private Pla: the stock engine centres this at vRes/2,
+                * which on our title artwork lands straight across the banner's
+                * top rule and the word SAVING. Arcade title screens put "PRESS
+                * START" below the logo, so shift it down onto the sand. The
+                * 200px matches TEXT_Y in tools/fit_title.py, which darkens the
+                * band it lands in - change one and change the other.
+                * (Project preference, not a bug fix - see docs/provenance.md.)
+                */
+                _menutextmshift(0, 0, 0, 0, 200, Tr("PRESS START"));
             }
             if(bothnewkeys & (FLAG_ANYBUTTON))
             {
