@@ -17616,6 +17616,9 @@ s_model *load_cached_model(char *name, char *owner, char unload)
             case CMD_MODEL_ALPHA:
                 newchar->alpha = GET_INT_ARG(1);
                 break;
+            case CMD_MODEL_CRASHSLIDE:
+                newchar->crashslide = GET_INT_ARG(1);
+                break;
             case CMD_MODEL_REMOVE:
 				value = GET_ARG(1);
 
@@ -49380,7 +49383,38 @@ entity *homing_find_target(entity* acting_entity)
 void bike_crash()
 {
     int i;
-    if(self->direction == DIRECTION_RIGHT)
+
+    /*
+    * Saving Private Pla: `crashslide 0` means stop where you fell.
+    *
+    * Upstream sets velocity.x = +/-2 here on every frame, so a wrecked vehicle
+    * coasts away until something culls it. That is the Final Fight motorbike,
+    * and it is wrong for a wreck you want left lying in the sand - worse, the
+    * sliding wreck is still showing a rider in its first crash frame while the
+    * engine has ALREADY dropped him as a separate entity, so there are briefly
+    * two of him.
+    */
+    if(!self->modeldata.crashslide)
+    {
+        self->velocity.x = 0;
+        self->velocity.z = 0;
+
+        /*
+        * And stop being an enemy.
+        *
+        * A wreck that stays where it fell also stays in the entity list, and
+        * findent(TYPE_ENEMY) - which is what a level `wait` tests - counts any
+        * enemy that is not flagged DEAD *and* CORPSE. So simply stopping the
+        * slide hangs the wave forever: the players clear the beach and the
+        * level will not advance, with nothing on screen to say why. Upstream
+        * never meets this because its wreck coasts off and gets culled.
+        *
+        * Marking it a corpse leaves it drawn and lying in the sand, which is
+        * the point of not sliding, while taking it out of the count.
+        */
+        self->death_state |= DEATH_STATE_DEAD | DEATH_STATE_CORPSE;
+    }
+    else if(self->direction == DIRECTION_RIGHT)
     {
         self->velocity.x = 2;
     }

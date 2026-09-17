@@ -57,20 +57,22 @@ void getPads(Uint8* keystate, Uint8* keystate_def)
 				lastkey = ev.key.keysym.scancode;
 
 				/*
-				* Saving Private Pla: ESC quits when there is no other way out.
+				* Saving Private Pla: ESC quits. Always.
 				*
-				* The only thing that shuts the engine down from the outside is
-				* SDL_QUIT - the window's close button. A cabinet configuration
-				* has no window: fullscreen, possibly spread over two monitors
-				* with no title bar on either. ESC is the arcade convention and
-				* it is what a person reaches for.
+				* The only thing that shut the engine down from outside was
+				* SDL_QUIT - the window's close button - which a fullscreen
+				* cabinet does not have. This was first gated on "fullscreen or
+				* more than one screen", on the reasoning that a window has a
+				* close button and ESC still means "back" in the menus. In
+				* practice that is a key that works sometimes, which is worse
+				* than one that always does: you reach for it, nothing happens,
+				* and you have no idea whether the game is wedged.
 				*
-				* Deliberately NOT unconditional. In a window there IS a close
-				* button, and ESC still means "back" inside the menus, which is
-				* worth keeping.
+				* The menus lose their back key. On this game that is two
+				* screens deep at most and START goes forward, so it is a
+				* cheaper loss than an unreliable quit.
 				*/
-				if(ev.key.keysym.sym == SDLK_ESCAPE
-				   && (spp_screen_count > 1 || spp_force_fullscreen))
+				if(ev.key.keysym.sym == SDLK_ESCAPE)
 				{
 					borShutdown(0, DEFAULT_SHUTDOWN_MESSAGE);
 				}

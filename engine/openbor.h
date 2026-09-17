@@ -3701,6 +3701,16 @@ typedef struct
     /* Projectile model IDs */
     int project;
     int rider; // 7-1-2005 now every "biker" can have a new driver!
+
+    /*
+    * Saving Private Pla: does a crashed biker slide away, or stop where it
+    * fell? bike_crash() hardcodes velocity.x = +/-2 every frame, so upstream a
+    * wrecked vehicle always coasts off the screen - which is the Final Fight
+    * motorbike and is wrong for anything you want to leave lying in the sand.
+    * There is no way to say so from a model file, hence this. 1 is upstream
+    * behaviour and the default.
+    */
+    int crashslide;
     int knife; // 7-1-2005 now every enemy can have their own "knife" projectile
     int pshotno; // 7-1-2005 now every enemy can have their own "knife" projectile
     int star; // 7-1-2005 now every enemy can have their own "ninja star" projectiles

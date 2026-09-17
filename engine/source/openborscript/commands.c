@@ -562,6 +562,7 @@ List *createModelCommandList(void)
     LIST_ADD(CMD_MODEL_RELOAD, "reload");
     LIST_ADD(CMD_MODEL_REMAP, "remap");
     LIST_ADD(CMD_MODEL_REMOVE, "remove");
+    LIST_ADD(CMD_MODEL_CRASHSLIDE, "crashslide");
     LIST_ADD(CMD_MODEL_RIDER, "rider");
     LIST_ADD(CMD_MODEL_RISEATTACKTYPE, "riseattacktype");
     LIST_ADD(CMD_MODEL_RISEINV, "riseinv");
