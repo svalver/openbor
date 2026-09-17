@@ -2791,18 +2791,26 @@ void clearbuttons(int player)
 
     if (player == 0)
     {
-        savedata.keys[0][SDID_MOVEUP]    = CONTROL_DEFAULT1_UP; //Kratus (22-04-21) Maintain the key config only for player 1 because other modules will not work with CONTROL_NONE
-        savedata.keys[0][SDID_MOVEDOWN]  = CONTROL_DEFAULT1_DOWN;
-        savedata.keys[0][SDID_MOVELEFT]  = CONTROL_DEFAULT1_LEFT;
-        savedata.keys[0][SDID_MOVERIGHT] = CONTROL_DEFAULT1_RIGHT;
-        savedata.keys[0][SDID_ATTACK]    = CONTROL_DEFAULT1_FIRE1;
-        savedata.keys[0][SDID_ATTACK2]   = CONTROL_DEFAULT1_FIRE2;
-        savedata.keys[0][SDID_ATTACK3]   = CONTROL_DEFAULT1_FIRE3;
-        savedata.keys[0][SDID_ATTACK4]   = CONTROL_DEFAULT1_FIRE4;
-        savedata.keys[0][SDID_JUMP]      = CONTROL_DEFAULT1_FIRE5;
-        savedata.keys[0][SDID_SPECIAL]   = CONTROL_DEFAULT1_FIRE6;
-        savedata.keys[0][SDID_START]     = CONTROL_DEFAULT1_START;
-        savedata.keys[0][SDID_SCREENSHOT] = CONTROL_DEFAULT1_SCREENSHOT;
+        /*
+        * Saving Private Pla: player 1's PRIMARY binding is the controller on
+        * joystick port 0. The keyboard is not lost - control_update() falls
+        * back to default_control (built from default_keys[], the untouched
+        * CONTROL_DEFAULT1_* keyboard set below) for player 1 whenever these
+        * produce nothing. So player 1 is "pad if present, keyboard otherwise"
+        * with no configuration and no menu.
+        */
+        savedata.keys[0][SDID_MOVEUP]    = CONTROL_PAD1_UP;
+        savedata.keys[0][SDID_MOVEDOWN]  = CONTROL_PAD1_DOWN;
+        savedata.keys[0][SDID_MOVELEFT]  = CONTROL_PAD1_LEFT;
+        savedata.keys[0][SDID_MOVERIGHT] = CONTROL_PAD1_RIGHT;
+        savedata.keys[0][SDID_ATTACK]    = CONTROL_PAD1_FIRE1;
+        savedata.keys[0][SDID_ATTACK2]   = CONTROL_PAD1_FIRE2;
+        savedata.keys[0][SDID_ATTACK3]   = CONTROL_PAD1_FIRE3;
+        savedata.keys[0][SDID_ATTACK4]   = CONTROL_PAD1_FIRE4;
+        savedata.keys[0][SDID_JUMP]      = CONTROL_PAD1_FIRE5;
+        savedata.keys[0][SDID_SPECIAL]   = CONTROL_PAD1_FIRE6;
+        savedata.keys[0][SDID_START]     = CONTROL_PAD1_START;
+        savedata.keys[0][SDID_SCREENSHOT] = CONTROL_PAD1_SCREENSHOT;
         #ifdef SDL
             //savedata.keys[0][SDID_ESC]       = CONTROL_DEFAULT1_ESC;
         #endif
@@ -2838,18 +2846,25 @@ void clearbuttons(int player)
     }
     else if (player == 1)
     {
-        savedata.keys[1][SDID_MOVEUP]    = CONTROL_NONE; //Kratus (20-04-21) Used to clear all keys
-        savedata.keys[1][SDID_MOVEDOWN]  = CONTROL_NONE;
-        savedata.keys[1][SDID_MOVELEFT]  = CONTROL_NONE;
-        savedata.keys[1][SDID_MOVERIGHT] = CONTROL_NONE;
-        savedata.keys[1][SDID_ATTACK]    = CONTROL_NONE;
-        savedata.keys[1][SDID_ATTACK2]   = CONTROL_NONE;
-        savedata.keys[1][SDID_ATTACK3]   = CONTROL_NONE;
-        savedata.keys[1][SDID_ATTACK4]   = CONTROL_NONE;
-        savedata.keys[1][SDID_JUMP]      = CONTROL_NONE;
-        savedata.keys[1][SDID_SPECIAL]   = CONTROL_NONE;
-        savedata.keys[1][SDID_START]     = CONTROL_NONE;
-        savedata.keys[1][SDID_SCREENSHOT] = CONTROL_NONE;
+        /*
+        * Saving Private Pla: stock OpenBOR leaves players 2-4 on CONTROL_NONE -
+        * no bindings at all - which makes the CONTROL_DEFAULT2_* constants in
+        * sdl/control.h dead code and means a second player can never join,
+        * however many controllers are plugged in. Player 2 now gets the
+        * controller on joystick port 1.
+        */
+        savedata.keys[1][SDID_MOVEUP]    = CONTROL_DEFAULT2_UP;
+        savedata.keys[1][SDID_MOVEDOWN]  = CONTROL_DEFAULT2_DOWN;
+        savedata.keys[1][SDID_MOVELEFT]  = CONTROL_DEFAULT2_LEFT;
+        savedata.keys[1][SDID_MOVERIGHT] = CONTROL_DEFAULT2_RIGHT;
+        savedata.keys[1][SDID_ATTACK]    = CONTROL_DEFAULT2_FIRE1;
+        savedata.keys[1][SDID_ATTACK2]   = CONTROL_DEFAULT2_FIRE2;
+        savedata.keys[1][SDID_ATTACK3]   = CONTROL_DEFAULT2_FIRE3;
+        savedata.keys[1][SDID_ATTACK4]   = CONTROL_DEFAULT2_FIRE4;
+        savedata.keys[1][SDID_JUMP]      = CONTROL_DEFAULT2_FIRE5;
+        savedata.keys[1][SDID_SPECIAL]   = CONTROL_DEFAULT2_FIRE6;
+        savedata.keys[1][SDID_START]     = CONTROL_DEFAULT2_START;
+        savedata.keys[1][SDID_SCREENSHOT] = CONTROL_DEFAULT2_SCREENSHOT;
         #ifdef SDL
             //savedata.keys[1][SDID_ESC]       = CONTROL_DEFAULT2_ESC;
         #endif
@@ -2922,7 +2937,13 @@ void clearsettings()
         #ifdef ANDROID
         savedata.hwscale = 0.0;
         #else
-        savedata.hwscale = 1.0;
+        /*
+        * Saving Private Pla: stock default is 1.0, which on a 640x480 module
+        * gives a 640x480 window - unusably small on a modern display. There is
+        * no module-level override for this; it is a user setting with no
+        * in-module equivalent. (Project preference, not a bug fix.)
+        */
+        savedata.hwscale = 1.5;
         #endif
     #endif
 
@@ -51750,8 +51771,21 @@ void fade_out(int type, int speed)
     s_drawmethod dm = plainmethod;
     dm.alpha = BLEND_MODE_AVERAGE;
 
+    /*
+    * Saving Private Pla: this loop runs 64 frames - over a second - and in
+    * stock OpenBOR it never reads input, so the fade could not be skipped and
+    * the process stopped answering the window server for its whole duration.
+    * Now every iteration refreshes input like any other frame, and any button
+    * ends the fade early. See also SDL_PumpEvents() in vga_vwait().
+    */
     for(i = 0, j = 0; j < 64; )
     {
+        inputrefresh(playrecstatus->status);
+        if(bothnewkeys & (FLAG_ANYBUTTON | FLAG_ESC))
+        {
+            break;
+        }
+
         while(j <= i && j < 64)
         {
             if(!type || type == 1)
@@ -52280,6 +52314,23 @@ void startup()
     // init. input recorder
     init_input_recorder();
 
+    /*
+    * Saving Private Pla: menu.txt must be read BEFORE the fonts.
+    *
+    * load_menu_txt() is where `fontmonospace` is parsed, and load_all_fonts()
+    * passes fontmonospace[i] into font_load() as a build flag - the glyph
+    * advances are baked in at load time. Stock OpenBOR loads menu.txt AFTER
+    * the fonts (it used to sit below the object engine init), so the flag
+    * arrived too late to have any effect and a module asking for monospace
+    * silently got proportional. The visible symptom is that SPACE, which
+    * clips to zero width, advances only cell/10 - so words run together.
+    *
+    * Reading the config before acting on it is the order it always wanted.
+    */
+    printf("Loading menu.txt.............\t");
+    load_menu_txt();
+    printf("Done!\n");
+
     printf("Loading fonts................\t");
     load_all_fonts();
     printf("Done!\n");
@@ -52312,10 +52363,6 @@ void startup()
     {
         borShutdown(1, "Not enough memory for game objects!\n");
     }
-    printf("Done!\n");
-
-    printf("Loading menu.txt.............\t");
-    load_menu_txt();
     printf("Done!\n");
 
     /*
@@ -56515,10 +56562,14 @@ void openborMain(int argc, char **argv)
             load_cached_background("data/bgs/logo");
         }
 
-        while(_time < global_config.game_speed * 6 && !(bothnewkeys & (FLAG_ANYBUTTON | FLAG_ESC)))
-        {
-            update(0, 0);
-        }
+        /*
+        * Saving Private Pla: the stock engine holds the logo screen here for a
+        * fixed six seconds. On an arcade cabinet you want the attract loop to
+        * reach "PRESS START" immediately, and on a module with no logo artwork
+        * the hold just reads as the game having frozen. Draw one frame and move
+        * on. (Project preference, not a bug fix - see docs/provenance.md.)
+        */
+        update(0, 0);
 
         music("data/music/remix", 1, 0);
 
@@ -56590,16 +56641,25 @@ void openborMain(int argc, char **argv)
         }
         else
         {
-            _menutextm((selector == 0), 2, 0, Tr("Start Game"));
-            _menutextm((selector == 1), 3, 0, Tr("Options"));
-            _menutextm((selector == 2), 4, 0, Tr("How To Play"));
-            _menutextm((selector == 3), 5, 0, Tr("Hall Of Fame"));
-            _menutextm((selector == 4), 6, 0, Tr("Quit"));
+            /*
+            * Saving Private Pla: arcade title menu. The stock menu is
+            * Start Game / Options / How To Play / Hall Of Fame / Quit, which
+            * then leads to Choose Mode (New Game / Load Game / Back) before the
+            * player even picks a character. A cabinet asks one question - how
+            * many of you are there - and gets on with it.
+            *
+            * A cabinet has no options screen either, so there is not one here.
+            * ESC still quits, and the window scale and control defaults are set
+            * in the engine rather than exposed as a menu.
+            * (Project preference, not a bug fix - see docs/provenance.md.)
+            */
+            _menutextm((selector == 0), 2, 0, Tr("1 PLAYER"));
+            _menutextm((selector == 1), 3, 0, Tr("2 PLAYERS"));
             if(selector < 0)
             {
-                selector = 4;
+                selector = 1;
             }
-            if(selector > 4)
+            if(selector > 1)
             {
                 selector = 0;
             }
@@ -56634,19 +56694,34 @@ void openborMain(int argc, char **argv)
                 switch(selector)
                 {
                 case 0:
+                case 1:
+                {
+                    /*
+                    * Saving Private Pla: selector 0 is one player, 1 is two, so
+                    * the count is selector + 1. Go straight to the game -
+                    * menu_difficulty() auto-loads when a module has a single
+                    * set, so a one-set module goes title -> character select.
+                    * A set whose own maxplayers is 1 simply ignores the second
+                    * player, which is what we want while co-op is parked.
+                    */
+                    int joined = selector + 1;
+                    int chosen_set;
+
                     for(i = 0; i < MAX_PLAYERS; i++)
                     {
-                        players[i] = player[i].newkeys & (FLAG_ANYBUTTON);
+                        players[i] = (i < joined);
                     }
-                    relback = choose_mode(players);
-                    if(relback)
+
+                    chosen_set = menu_difficulty();
+                    if(chosen_set != -1)
                     {
+                        playgame(players, chosen_set, 0);
+                        relback = 1;
                         started = 0;
                     }
                     break;
-                case 1:
-                    menu_options();
-                    break;
+                }
+
                 case 2:
                 {
                     int previousLoop = musicloop;
