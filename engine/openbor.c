@@ -56601,41 +56601,24 @@ void openborMain(int argc, char **argv)
 
     if(skiptoset < 0)
     {
-
-        // New alternative background path.
-        if(custBkgrds != NULL)
-        {
-            strcpy(tmpBuff, custBkgrds);
-            strcat(tmpBuff, "logo");
-            load_background(tmpBuff);
-        }
-        else
-        {
-            load_cached_background("data/bgs/logo");
-        }
-
         /*
-        * Saving Private Pla: the stock engine holds the logo screen here for a
-        * fixed six seconds. On an arcade cabinet you want the attract loop to
-        * reach "PRESS START" immediately, and on a module with no logo artwork
-        * the hold just reads as the game having frozen. Draw one frame and move
-        * on. (Project preference, not a bug fix - see docs/provenance.md.)
+        * Saving Private Pla: no logo screen at all.
+        *
+        * Upstream loads data/bgs/logo here and holds it for six seconds. We
+        * first cut the hold to a single frame, which was still wrong: one frame
+        * of a different picture before the title is a flash, and a flash of the
+        * OLD title card is worse than no logo. The game has one piece of key
+        * art and the title screen is where it belongs.
+        *
+        * Only the music survives from this block. Nothing loads data/bgs/logo
+        * any more, so the file is gone from the module too - cache_background()
+        * tolerates a missing file (it stores NULL and moves on), and it is
+        * load_background() that shuts the engine down, which is no longer
+        * called for it.
+        *
+        * (Project preference, not a bug fix - see docs/provenance.md.)
         */
-        update(0, 0);
-
         music("data/music/remix", 1, 0);
-
-        // New alternative scene path.
-        if(custScenes != NULL)
-        {
-            strcpy(tmpBuff, custScenes);
-            strcat(tmpBuff, "logo.txt");
-            playscene(tmpBuff);
-        }
-        else
-        {
-            playscene("data/scenes/logo.txt");
-        }
     }
     clearscreen(background);
 
