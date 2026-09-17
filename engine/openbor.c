@@ -5881,36 +5881,25 @@ void init_colourtable()
     memcpy(ldcolourtable, hpcolourtable, 11 * sizeof(*hpcolourtable));
 }
 
-void load_background(char *filename)
+/*
+* Saving Private Pla: the life bar colours, lifted out of load_background().
+*
+* They used to be set there and only there, which made every HUD colour depend
+* on a background having been loaded first. lifebar_colors() zeroes all of them
+* when data/lifebar.txt is absent, and the fallbacks below are what put real
+* colours back - so any path into a level that has not loaded a background
+* draws the entire life bar in colour index 0. On this module index 0 is the
+* transparency key, a near-black, so the bar renders solid black and never
+* appears to change: damage is being taken and nothing on screen says so.
+*
+* -autostart is exactly such a path, and removing the logo screen took away the
+* one early load_background() that had been masking it. Called once at startup
+* now, as well as from load_background().
+*/
+void init_lifebar_colors()
 {
-    // Clean up any previous background.
-    unload_background();
-
-    // Attempt to load 8bit color depth background. If it fails,
-    // then attempt to load 24bit color depth background. If THAT
-    // fails, something is wrong and we better shut down to avoid
-    // a crash.
-    if(!loadscreen(filename, packfile, NULL, PIXEL_x8, &background))
-    {
-        if (loadscreen32(filename, packfile, &background))
-        {
-            printf("Loaded 32-bit background '%s'\n", filename);
-        }
-        else
-        {
-            borShutdown(1, "Error loading background (PIXEL_x8/PIXEL_32) file '%s'", filename);
-        }
-    }
-
-    // If background is 8bit color depth, use its color
-    // table to populate the global and global neon palettes.
-    if (background->pixelformat == PIXEL_x8)
-    {
-        memcpy(pal, background->palette, PAL_BYTES);
-        memcpy(neontable, pal, PAL_BYTES);
-    }
-
     lifebar_colors();
+
     if(!color_black)
     {
         color_black = _makecolour(0, 0, 0);    // black boxes 500-600HP
@@ -5955,6 +5944,49 @@ void load_background(char *filename)
     {
         color_magic2 = _makecolour(24, 48, 143);    // 2sec magic bar color by tails
     }
+
+    /*
+    * And rebuild the table the bar actually reads. Setting the colour
+    * variables is only half of it - hpcolourtable is a snapshot of them,
+    * and load_background() happened to call init_colourtable() straight
+    * afterwards. Anything else calling this needs both, so do both.
+    */
+    init_colourtable();
+}
+
+void load_background(char *filename)
+{
+    // Clean up any previous background.
+    unload_background();
+
+    // Attempt to load 8bit color depth background. If it fails,
+    // then attempt to load 24bit color depth background. If THAT
+    // fails, something is wrong and we better shut down to avoid
+    // a crash.
+    if(!loadscreen(filename, packfile, NULL, PIXEL_x8, &background))
+    {
+        if (loadscreen32(filename, packfile, &background))
+        {
+            printf("Loaded 32-bit background '%s'\n", filename);
+        }
+        else
+        {
+            borShutdown(1, "Error loading background (PIXEL_x8/PIXEL_32) file '%s'", filename);
+        }
+    }
+
+    // If background is 8bit color depth, use its color
+    // table to populate the global and global neon palettes.
+    if (background->pixelformat == PIXEL_x8)
+    {
+        memcpy(pal, background->palette, PAL_BYTES);
+        memcpy(neontable, pal, PAL_BYTES);
+    }
+
+    /*
+    * Saving Private Pla: was inline here. See init_lifebar_colors().
+    */
+    init_lifebar_colors();
     if(!shadowcolor)
     {
         shadowcolor =  _makecolour(64, 64, 64);
@@ -56621,6 +56653,14 @@ void openborMain(int argc, char **argv)
     loadsettings();
     startup();
 	bothnewkeys = 0;
+
+    /*
+    * Saving Private Pla: set the HUD colours before anything can draw a life
+    * bar. They used to be initialised only as a side effect of loading a
+    * background, so any route into a level that skipped one - -autostart, most
+    * obviously - drew every bar in colour index 0.
+    */
+    init_lifebar_colors();
 
     if(skiptoset < 0)
     {
