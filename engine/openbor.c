@@ -53912,6 +53912,22 @@ int selectplayer(int *players, char *filename, int useSavedGame)
 
 void playgame(int *players,  unsigned which_set, int useSavedGame)
 {
+    /*
+    * Saving Private Pla: state of the world at the moment a level starts.
+    *
+    * One line, always logged, because everything on it has already been zero
+    * once when it should not have been. The HUD colours in particular were
+    * initialised only as a side effect of loading a background, so any route
+    * here that skipped one drew every life bar in colour index 0 - damage was
+    * being taken and nothing said so. It took a day to notice and an afternoon
+    * to find, and it would have been a one-line diff to see.
+    *
+    * Asserted by test.sh, which is what stops it being discovered by eye again.
+    */
+    printf("Level start: players=%d,%d set=%u saved=%d hud(black=%d red=%d green=%d yellow=%d)\n",
+           players[0], players[1], which_set, useSavedGame,
+           color_black, color_red, color_green, color_yellow);
+    fflush(stdout);
     int i;
     current_level = 0;
     current_stage = 1;
