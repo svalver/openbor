@@ -49473,6 +49473,24 @@ int biker_takedamage(entity* target_entity, entity* attacking_entity, s_attack* 
         driver->position.y = target_entity->position.y;
         driver->drop = 1;
         driver->direction = target_entity->direction;
+
+        /*
+        * Saving Private Pla: throw him clear.
+        *
+        * drop_driver() puts the rider at the vehicle's exact x and z with no
+        * velocity, so he lands inside it. With a vehicle that coasts away
+        * that sorts itself out; with `crashslide 0` the wreck stays put and
+        * the two sprites simply overlap, which looks like a drawing error.
+        *
+        * Only for crashslide 0, because that is the case that created the
+        * problem, and thrown against the vehicle's facing so the two end up
+        * on opposite sides of the crash rather than on top of each other.
+        */
+        if(!target_entity->modeldata.crashslide)
+        {
+            driver->velocity.x = (target_entity->direction == DIRECTION_RIGHT) ? -2.2f : 2.2f;
+            toss(driver, 2.6);
+        }
         if(driver->takedamage)
         {
             driver->takedamage(driver, attacking_entity, attack_object, fall_flag, defense_object);
