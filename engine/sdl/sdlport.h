@@ -23,7 +23,17 @@
 #define strnicmp strncasecmp
 #endif
 
-#if DARWIN || ANDROID
+/*
+* SKIP_CODE's only effect is to suppress setting the window title (see the two
+* #ifndef SKIP_CODE blocks in sdlport.c). Android has no window title, so it
+* genuinely does not apply there. macOS does, and excluding it meant a macOS
+* build could never set its title at all - every game was stuck showing
+* "OpenBOR", the default in sdl/video.c. That looks like an oversight rather
+* than a deliberate platform difference: video_set_window_title() is safe to
+* call before the window exists, since it just fills in the buffer that
+* SDL_CreateWindow() later reads.
+*/
+#if ANDROID
 #define SKIP_CODE
 #endif
 
