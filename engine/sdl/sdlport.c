@@ -55,7 +55,12 @@ char* AndroidRoot(char *relPath)
 
 void borExit(int reset)
 {
-	SDL_Delay(1000);
+	/*
+	* Saving Private Pla: was SDL_Delay(1000) - a full second of dead time on
+	* every quit, with the window already unresponsive. Nothing depends on it:
+	* SDL_Quit() tears down its own subsystems, and the audio thread is stopped
+	* by the shutdown path before we get here.
+	*/
 	SDL_Quit(); // call this instead of atexit(SDL_Quit); It's best practice!
     exit(reset);
 }
