@@ -54,6 +54,7 @@ static SDL_Texture *texture = NULL;
 * them, and they change when you plug or unplug a monitor.
 */
 int spp_screen_count = 1;
+int spp_force_fullscreen = 0;
 int spp_screen_display[SPP_MAX_SCREENS] = { -1, -1, -1, -1 };
 
 static SDL_Window   *spp_window[SPP_MAX_SCREENS]   = { NULL };
@@ -71,7 +72,8 @@ static void spp_place(SDL_Window *w, int display)
 			SDL_WINDOWPOS_CENTERED_DISPLAY(display),
 			SDL_WINDOWPOS_CENTERED_DISPLAY(display));
 	}
-	if(savedata.fullscreen) SDL_SetWindowFullscreen(w, SDL_WINDOW_FULLSCREEN_DESKTOP);
+	if(savedata.fullscreen || spp_force_fullscreen)
+		SDL_SetWindowFullscreen(w, SDL_WINDOW_FULLSCREEN_DESKTOP);
 }
 
 /* Tear down the extra screens; screen 0 is the engine's own. */
@@ -112,7 +114,7 @@ void initSDL()
 	* pointer vanishes whenever it crosses the game and you cannot find it
 	* again. Hide it only in fullscreen. (Project preference, not a bug fix.)
 	*/
-	SDL_ShowCursor(savedata.fullscreen ? SDL_DISABLE : SDL_ENABLE);
+	SDL_ShowCursor((savedata.fullscreen || spp_force_fullscreen) ? SDL_DISABLE : SDL_ENABLE);
 
 #ifdef LOADGL
 	if(SDL_GL_LoadLibrary(NULL) < 0)
@@ -142,7 +144,7 @@ int SetVideoMode(int w, int h, int bpp, bool gl)
 	static int last_x = SDL_WINDOWPOS_UNDEFINED;
 	static int last_y = SDL_WINDOWPOS_UNDEFINED;
 
-	if(savedata.fullscreen) flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+	if(savedata.fullscreen || spp_force_fullscreen) flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
 
 	/*
 	* Saving Private Pla: with several screens each window shows one slice of
@@ -183,7 +185,7 @@ int SetVideoMode(int w, int h, int bpp, bool gl)
 
 	if(window)
 	{
-		if(savedata.fullscreen)
+		if(savedata.fullscreen || spp_force_fullscreen)
 		{
 			SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
 		}
@@ -351,9 +353,17 @@ int video_set_mode(s_videomodes videomodes)
 	* pointer vanishes whenever it crosses the game and you cannot find it
 	* again. Hide it only in fullscreen. (Project preference, not a bug fix.)
 	*/
-	SDL_ShowCursor(savedata.fullscreen ? SDL_DISABLE : SDL_ENABLE);
+	SDL_ShowCursor((savedata.fullscreen || spp_force_fullscreen) ? SDL_DISABLE : SDL_ENABLE);
 	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-	video_stretch(savedata.stretch);
+
+	/*
+	* Multi-screen always stretches. Each half is 4:3 and the monitors are
+	* 16:9, so preserving aspect puts black bars down both sides of BOTH
+	* displays - including either side of the seam, straight through the
+	* middle of the picture. A cabinet has no bars there. This is the same
+	* call the MAME scripts make with -nokeepaspect.
+	*/
+	video_stretch(spp_screen_count > 1 ? 1 : savedata.stretch);
 
 	return 1;
 }
@@ -460,13 +470,28 @@ void video_clearscreen()
 
 void video_stretch(int enable)
 {
+	/*
+	* Saving Private Pla: every screen, and the logical size is the SLICE.
+	*
+	* Two bugs lived here. Only screen 0's renderer was configured, so the
+	* displays scaled differently - one filled 1071 rows, the other 894. And
+	* the logical size was the whole picture (1280x480), which is the wrong
+	* aspect for a window showing half of it.
+	*/
+	int i, slice_w;
+
 	stretch = enable;
-	if(window && !opengl)
+	if(!window || opengl) return;
+
+	slice_w = stored_videomodes.hRes / (spp_screen_count > 0 ? spp_screen_count : 1);
+
+	for(i = 0; i < spp_screen_count; i++)
 	{
+		if(!spp_renderer[i]) continue;
 		if(stretch)
-			SDL_RenderSetLogicalSize(renderer, 0, 0);
+			SDL_RenderSetLogicalSize(spp_renderer[i], 0, 0);
 		else
-			SDL_RenderSetLogicalSize(renderer, stored_videomodes.hRes, stored_videomodes.vRes);
+			SDL_RenderSetLogicalSize(spp_renderer[i], slice_w, stored_videomodes.vRes);
 	}
 }
 

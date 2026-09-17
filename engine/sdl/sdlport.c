@@ -169,6 +169,8 @@ int main(int argc, char *argv[])
             spp_screen_count = atoi(argv[++a]);
             if(spp_screen_count < 1) spp_screen_count = 1;
             if(spp_screen_count > SPP_MAX_SCREENS) spp_screen_count = SPP_MAX_SCREENS;
+         } else if(!strcmp(argv[a], "-fullscreen")) {
+            spp_force_fullscreen = 1;
          } else if(!strncmp(argv[a], "-screen", 7) && argv[a][7] >= '0' && argv[a][7] <= '9'
                    && a + 1 < argc) {
             int which = argv[a][7] - '0';

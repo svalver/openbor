@@ -39,6 +39,13 @@ void video_set_window_title(const char*);
 #define SPP_MAX_SCREENS 4
 extern int spp_screen_count;
 extern int spp_screen_display[SPP_MAX_SCREENS];
+
+/*
+* Fullscreen for this run only, from -fullscreen. Deliberately NOT
+* savedata.fullscreen, which is written back to the save file - a launcher flag
+* should not quietly change the setting the player chose in the menu.
+*/
+extern int spp_force_fullscreen;
 void video_set_color_correction(int, int);
 
 // for WebM video playback

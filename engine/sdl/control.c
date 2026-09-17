@@ -55,6 +55,25 @@ void getPads(Uint8* keystate, Uint8* keystate_def)
 		{
 			case SDL_KEYDOWN:
 				lastkey = ev.key.keysym.scancode;
+
+				/*
+				* Saving Private Pla: ESC quits when there is no other way out.
+				*
+				* The only thing that shuts the engine down from the outside is
+				* SDL_QUIT - the window's close button. A cabinet configuration
+				* has no window: fullscreen, possibly spread over two monitors
+				* with no title bar on either. ESC is the arcade convention and
+				* it is what a person reaches for.
+				*
+				* Deliberately NOT unconditional. In a window there IS a close
+				* button, and ESC still means "back" inside the menus, which is
+				* worth keeping.
+				*/
+				if(ev.key.keysym.sym == SDLK_ESCAPE
+				   && (spp_screen_count > 1 || spp_force_fullscreen))
+				{
+					borShutdown(0, DEFAULT_SHUTDOWN_MESSAGE);
+				}
 				if((keystate[SDL_SCANCODE_LALT] || keystate[SDL_SCANCODE_RALT]) && (lastkey == SDL_SCANCODE_RETURN))
 				{
 					video_fullscreen_flip();
