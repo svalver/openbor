@@ -34723,6 +34723,19 @@ static unsigned long spp_wave_signature(void)
             continue;
         }
 
+        /*
+        * Anything on a lifespan timer removes itself and therefore cannot be
+        * the cause of a permanent stall - and an enemy's rounds ARE counted
+        * enemies (knife_spawn copies the parent's type), so a single enemy
+        * shooting would otherwise keep the signature churning and the
+        * diagnostic would never fire on the wave it is meant to catch.
+        * They are still listed in the report; they just do not reset the clock.
+        */
+        if(e->modeldata.lifespan > 0)
+        {
+            continue;
+        }
+
         sig = sig * 31u + (unsigned long)(i + 1);
         sig = sig * 31u + (unsigned long)(e->energy_state.health_current + 1000);
         sig = sig * 31u + (unsigned long)((int)e->position.x + 100000);
@@ -34783,6 +34796,24 @@ static void spp_report_stuck_wave(entity *blocker)
                 e->velocity.x,
                 (int)e->animnum, (int)e->animating, (int)e->death_state,
                 e->modeldata.offscreenkill);
+    }
+
+    /*
+    * Obstacles and traps are NOT counted by the wave gate, but they are
+    * usually why a counted entity is not moving, so list them too.
+    */
+    for(int i = 0; i < ent_max; i++)
+    {
+        entity *e = ent_list[i];
+
+        if(!e->exists || !(e->modeldata.type & (TYPE_OBSTACLE | TYPE_TRAP)))
+        {
+            continue;
+        }
+
+        fprintf(stderr, "    %-12s health=%-4d x=%-8.1f z=%-6.1f (not counted)\n",
+                e->name, e->energy_state.health_current,
+                e->position.x, e->position.z);
     }
     fflush(stderr);
 }
